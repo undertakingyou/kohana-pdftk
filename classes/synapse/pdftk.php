@@ -25,7 +25,7 @@ class Synapse_Pdftk {
 
 			$output_filename = Pdftk::unique_filename('pdf');
 
-			$pdftk = Kohana::config('pdf.pdftk.path');
+			$pdftk = Kohana::$config->load('pdf.pdftk.path');
 			if ($pdftk == FALSE)
 			{
 				throw new RuntimeException('Unconfigured or incorrect Pdftk path. Set config \'pdf.pdftk.path\''.' for this environment.');
@@ -96,7 +96,7 @@ class Synapse_Pdftk {
 
 			$output_filename = Pdftk::unique_filename('pdf');
 
-			$pdftk = Kohana::config('pdf.pdftk.path');
+			$pdftk = Kohana::$config->load('pdf.pdftk.path');
 			if ($pdftk == FALSE)
 			{
 				throw new RuntimeException('Unconfigured or incorrect Pdftk path. Set config \'pdf.pdftk.path\''.' for this environment.');
@@ -242,7 +242,7 @@ class Synapse_Pdftk {
 		{
 			$pdf_filename = Pdftk::unique_filename('pdf');
 
-			$wkhtmltopdf = Kohana::config('pdf.wkhtmltopdf.path');
+			$wkhtmltopdf = Kohana::$config->load('pdf.wkhtmltopdf.path');
 			if ($wkhtmltopdf == FALSE)
 			{
 				throw new RuntimeException('Unconfigured or incorrect wkhtmltopdf path. Set config \'pdf.wkhtmltopdf.path\''.' for this environment.');
@@ -362,7 +362,7 @@ class Synapse_Pdftk {
 
 			$output_filename = Pdftk::unique_filename('pdf');
 
-			$pdftk = Kohana::config('pdf.pdftk.path');
+			$pdftk = Kohana::$config->load('pdf.pdftk.path');
 			if ($pdftk == FALSE)
 			{
 				throw new RuntimeException('Unconfigured or incorrect Pdftk path. Set config \'pdf.pdftk.path\''.' for this environment.');
@@ -445,5 +445,67 @@ class Synapse_Pdftk {
 		while (file_exists($unique_filename));
 
 		return $unique_filename;
+	}
+
+	/**
+	 * Creates an xfdf file for merging information in a document
+	 * 
+	 * @param string $file
+	 * @param array $info
+	 * @param string $enc
+	 */
+	public static function createxfdf( $file, $info, $enc='UTF-8' )
+	{
+	    $data = '<?xml version="1.0" encoding="'.$enc.'"?>' . "\n" .
+	        '<xfdf xmlns="http://ns.adobe.com/xfdf/" xml:space="preserve">' . "\n" .
+	        '<fields>' . "\n";
+	    foreach( $info as $field => $val )
+	    {
+	        $data .= '<field name="' . $field . '">' . "\n";
+	        if( is_array( $val ) )
+	        {
+	            foreach( $val as $opt )
+	                $data .= '<value>' .
+	                    htmlentities( $opt, ENT_COMPAT, $enc ) .
+	                    '</value>' . "\n";
+	        }
+	        else
+	        {
+	            $data .= '<value>' .
+	                htmlentities( $val, ENT_COMPAT, $enc ) .
+	                '</value>' . "\n";
+	        }
+	        $data .= '</field>' . "\n";
+	    }
+	    $data .= '</fields>' . "\n" .
+	        '<ids original="' . md5( $file ) . '" modified="' .
+	            time() . '" />' . "\n" .
+	        '<f href="' . $file . '" />' . "\n" .
+	        '</xfdf>' . "\n";
+	    $filename = Pdftk::unique_filename('xfdf');
+	 	$fd = fopen($filename,'w');
+	 	fwrite($fd,$data,strlen($data));
+		fclose($fd); 
+	    return $filename;
+	}
+
+	/**
+	 * Fill a PDF form with the data we have provided
+	 *
+	 * @param string $file
+	 * @param string $xfdf
+	 */
+	public static function fillform($file, $xfdf)
+	{
+		$pdftk = Kohana::$config->load('pdf.pdftk.path');
+		$f = Pdftk::parse_input($file);
+		if ($pdftk == FALSE)
+		{
+			throw new RuntimeException('Unconfigured or incorrect Pdftk path. Set config \'pdf.pdftk.path\''.' for this environment.');
+		}
+		$filename = Pdftk::unique_filename('pdf');
+		$command = escapeshellarg($pdftk) . ' ' . escapeshellarg($f) . ' fill_form ' . escapeshellarg($xfdf) . ' output ' . escapeshellarg($filename);
+		passthru($command);
+		return $filename;
 	}
 }
