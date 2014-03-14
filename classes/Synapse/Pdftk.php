@@ -506,6 +506,7 @@ class Synapse_Pdftk {
 		$filename = Pdftk::unique_filename('pdf');
 		$command = escapeshellarg($pdftk) . ' ' . escapeshellarg($f) . ' fill_form ' . escapeshellarg($xfdf) . ' output ' . escapeshellarg($filename);
 		passthru($command);
+		unset($xfdf); //remove the xfdf file
 		return $filename;
 	}
 }
